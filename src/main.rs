@@ -15,8 +15,9 @@ struct UserInput {
     value: String,
 }
 
-#[post("/", data = "<user_input>")]
-fn submit_paste(user_input: Form<UserInput>) -> String {
+fn gen_random_filename() -> String {
+    // generate random srtring while we find
+    // a string which doesn't already exist
     let mut file_name: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(vars::URL_LENGTH)
@@ -26,18 +27,26 @@ fn submit_paste(user_input: Form<UserInput>) -> String {
     while Path::new(&(vars::PASTE_ROOT.to_owned() + &file_name)).exists() {
         file_name = rand::thread_rng()
             .sample_iter(&Alphanumeric)
-            .take(4)
+            .take(vars::URL_LENGTH)
             .map(char::from)
             .collect();
     }
 
-    fs::write(
+    file_name
+}
+
+#[post("/", data = "<user_input>")]
+fn submit_paste(user_input: Form<UserInput>) -> String {
+    let file_name: String = gen_random_filename();
+
+    let write_result = fs::write(
         &(vars::PASTE_ROOT.to_owned() + &file_name),
         user_input.into_inner().value,
-    )
-    .unwrap();
-
-    file_name
+    );
+    match write_result {
+        Ok(_) => (vars::PASTE_ROOT.to_owned() + &file_name),
+        Err(_) => String::from("Error saving paste"),
+    }
 }
 
 #[get("/<file_name>")]
@@ -57,10 +66,10 @@ fn homepage() -> String {
 fn main() {
     fs::create_dir_all(vars::PASTE_ROOT).unwrap();
 
-    let limits = Limits::new().limit("forms", 5 * 1024 * 1024);
+    let limits = Limits::new().limit("forms", vars::MAX_FILE_SIZE);
 
     let config = Config::build(Environment::Staging)
-        .workers(2)
+        .workers(vars::WORKERS)
         .limits(limits)
         .unwrap();
 
