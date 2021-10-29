@@ -15,7 +15,7 @@ Assuming the address is `0.0.0.0` and port is `8000`, you can do the following:
 #### Posting data
 
 ```sh
-curl --data-binary value="$(cat /path/to/file)"  http://0.0.0.0:8000/submit
+curl --data-binary value="$(cat /path/to/file)"  http://0.0.0.0:8000
 ```
 
 This prints a code that can be used to retrieve your file.

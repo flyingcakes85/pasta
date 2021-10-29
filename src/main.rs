@@ -1,24 +1,22 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 use rand::{distributions::Alphanumeric, Rng};
-use rocket::config::{Config, Environment, Limits};
-use rocket::http::RawStr;
-use rocket::request::Form;
-use std::fs;
-use std::path::Path;
+use rocket::{
+    config::{Config, Environment, Limits},
+    request::Form,
+};
+use std::{fs, path::Path};
 mod vars;
 
 #[macro_use]
 extern crate rocket;
 
 #[derive(FromForm, Debug)]
-struct UserInput<'f> {
-    value: &'f RawStr,
+struct UserInput {
+    value: String,
 }
 
 #[post("/", data = "<user_input>")]
-fn submit_task(user_input: Form<UserInput>) -> String {
-    // format!("Your value: {}", user_input.into_inner().value)
-
+fn submit_paste(user_input: Form<UserInput>) -> String {
     let mut file_name: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(vars::URL_LENGTH)
@@ -47,8 +45,13 @@ fn get_paste(file_name: String) -> String {
     if Path::new(&(vars::PASTE_ROOT.to_owned() + &file_name)).exists() {
         fs::read_to_string(&(vars::PASTE_ROOT.to_owned() + &file_name)).unwrap()
     } else {
-        String::from("404")
+        String::from("404 NOT FOUND <br> <a href=\"/\">HOMEPAGE</a>")
     }
+}
+
+#[get("/")]
+fn homepage() -> String {
+    String::from("Homepage")
 }
 
 fn main() {
@@ -62,7 +65,6 @@ fn main() {
         .unwrap();
 
     rocket::custom(config)
-        .mount("/submit", routes![submit_task])
-        .mount("/", routes![get_paste])
+        .mount("/", routes![get_paste, submit_paste, homepage])
         .launch();
 }
